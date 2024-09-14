@@ -1,13 +1,13 @@
+require('dotenv').config(); // Load environment variables from .env file
 const express = require('express');
-const axios = require('axios');
-const cheerio = require('cheerio');
-const mysql = require('mysql');  // Using mysql module
+const mysql = require('mysql');
 const nodemailer = require('nodemailer');
-const bodyParser = require('body-parser');
-const cors = require("cors");
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = 'your_jwt_secret_key';
+const bodyParser = require('body-parser');
+const cors = require("cors");
+
+const JWT_SECRET = process.env.JWT_SECRET;
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -15,53 +15,50 @@ app.use(bodyParser.json());
 app.use(cors());
 app.use(express.json());
 
-// MySQL Database connection setup
-const db = mysql.createConnection({
-  host: 'royalstarlogistics.online',  // Replace with the correct host if needed
-  user: 'u273975820_royals',          // Your MySQL username
-  password: 'R#||S[Ep7',           // Your MySQL password
-  database: 'u273975820_royal'  
+// MySQL connection pool
+const pool = mysql.createPool({
+  connectionLimit: 10,
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME
 });
 
-db.connect((err) => {
-  if (err) {
-    console.error('Error connecting to database:', err);
-    return;
-  }
-  console.log('Connected to MySQL Database.');
-});
-
-// Nodemailer configuration for sending emails
+// Nodemailer setup
 const transporter = nodemailer.createTransport({
-  service: 'gmail', 
+  service: 'gmail',
   auth: {
-    user: 'rafaymalik5763@gmail.com', // Your email
-    pass: 'cbld isuv hqac ogcl',  // Your email password (use app password for security)
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
 });
 
 // Generate a random password
-const generatePassword = () => {
-  return Math.random().toString(36).slice(-8); // Generates an 8-character password
-};
+const generatePassword = () => Math.random().toString(36).slice(-8);
 
-// POST endpoint to handle form data and send credentials
+// API to send OTP and save user info
 app.post('/send-otp', (req, res) => {
   const { email, company, contact, address, phone, type } = req.body;
 
-  // Check if required fields are provided
   if (!email || !company || !contact || !address || !phone || !type) {
     return res.status(400).json({ error: 'All fields are required' });
   }
 
-  try {
-    db.query('SELECT email FROM carrier_users WHERE email = ?', [email], (err, results) => {
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection:', err);
+      return res.status(500).json({ error: 'Database connection error' });
+    }
+
+    connection.query('SELECT email FROM carrier_users WHERE email = ?', [email], (err, results) => {
       if (err) {
         console.error('Error fetching email:', err);
+        connection.release();
         return res.status(500).json({ error: 'Database error' });
       }
 
       if (results.length > 0) {
+        connection.release();
         return res.status(400).json({ error: 'Email already exists' });
       }
 
@@ -69,31 +66,29 @@ app.post('/send-otp', (req, res) => {
       bcrypt.hash(password, 10, (err, hashedPassword) => {
         if (err) {
           console.error('Error hashing password:', err);
+          connection.release();
           return res.status(500).json({ error: 'Error hashing password' });
         }
 
-        // Insert user data into the database
-        db.query(
+        connection.query(
           'INSERT INTO carrier_users (email, company, contact, address, phone, type, password) VALUES (?, ?, ?, ?, ?, ?, ?)',
           [email, company, contact, address, phone, type, hashedPassword],
           (err) => {
+            connection.release();
             if (err) {
               console.error('Error inserting user:', err);
               return res.status(500).json({ error: 'Database error' });
             }
 
-            // Generate a JWT token
             const token = jwt.sign({ email }, JWT_SECRET, { expiresIn: '1h' });
 
-            // Email configuration
             const mailOptions = {
-              from: 'rafaymalik5763@gmail.com',
+              from: process.env.EMAIL_USER,
               to: email,
               subject: 'Your Login Credentials',
               text: `Welcome! Here are your login credentials: \n\nEmail: ${email}\nPassword: ${password}\n\nPlease change your password after logging in.`,
             };
 
-            // Send the email with credentials
             transporter.sendMail(mailOptions, (err, info) => {
               if (err) {
                 console.error('Error sending email:', err);
@@ -106,13 +101,10 @@ app.post('/send-otp', (req, res) => {
         );
       });
     });
-  } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+  });
 });
 
-// API to create contacts table
+// API to create truckload quotes table
 app.get('/api/create-table', (req, res) => {
   const createTableQuery = `
     CREATE TABLE IF NOT EXISTS truckload_quotes (
@@ -135,7 +127,7 @@ app.get('/api/create-table', (req, res) => {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `;
-  db.query(createTableQuery, (err, result) => {
+  pool.query(createTableQuery, (err, result) => {
     if (err) {
       console.error('Error creating table:', err);
       return res.status(500).send('Error creating table');
@@ -143,6 +135,7 @@ app.get('/api/create-table', (req, res) => {
     res.send('Truckload Quotes table created successfully');
   });
 });
+
 // POST endpoint to insert contact data
 app.post('/api/contact', (req, res) => {
   const { user_name, user_email, phone_number, subject, message } = req.body;
@@ -153,7 +146,7 @@ app.post('/api/contact', (req, res) => {
 
   const query = `INSERT INTO contacts (user_name, user_email, phone_number, subject, message) VALUES (?, ?, ?, ?, ?)`;
 
-  db.query(query, [user_name, user_email, phone_number, subject, message], (err, result) => {
+  pool.query(query, [user_name, user_email, phone_number, subject, message], (err, result) => {
     if (err) {
       console.error('Error inserting data:', err);
       return res.status(500).send('Database Error');
@@ -162,7 +155,7 @@ app.post('/api/contact', (req, res) => {
   });
 });
 
-// API to insert form data
+// API to submit truckload quotes
 app.post('/api/submit-truckload-quote', (req, res) => {
   const { firstName, lastName, phone, email, title, company, origin, destination, pickupDate, deliveryDate, commodity, weight, equipment, trailerSize, specialInstructions } = req.body;
 
@@ -172,7 +165,7 @@ app.post('/api/submit-truckload-quote', (req, res) => {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
-  db.query(insertQuery, [firstName, lastName, phone, email, title, company, origin, destination, pickupDate, deliveryDate, commodity, weight, equipment, trailerSize, specialInstructions], (err, result) => {
+  pool.query(insertQuery, [firstName, lastName, phone, email, title, company, origin, destination, pickupDate, deliveryDate, commodity, weight, equipment, trailerSize, specialInstructions], (err, result) => {
     if (err) {
       console.error('Error inserting data:', err);
       return res.status(500).send('Error inserting data');
@@ -181,7 +174,7 @@ app.post('/api/submit-truckload-quote', (req, res) => {
   });
 });
 
-// Login Endpoint
+// Login endpoint
 app.post('/login', (req, res) => {
   const { email, password } = req.body;
 
@@ -189,52 +182,37 @@ app.post('/login', (req, res) => {
     return res.status(400).json({ error: 'Email and password are required' });
   }
 
-  try {
-    db.query('SELECT * FROM carrier_users WHERE email = ?', [email], (err, results) => {
+  pool.query('SELECT * FROM carrier_users WHERE email = ?', [email], (err, results) => {
+    if (err) {
+      console.error('Error fetching user:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    if (results.length === 0) {
+      return res.status(400).json({ error: 'User does not exist' });
+    }
+
+    const user = results[0];
+
+    bcrypt.compare(password, user.password, (err, isPasswordValid) => {
       if (err) {
-        console.error('Error fetching user:', err);
-        return res.status(500).json({ error: 'Database error' });
+        console.error('Error comparing password:', err);
+        return res.status(500).json({ error: 'Password comparison error' });
       }
 
-      if (results.length === 0) {
-        return res.status(400).json({ error: 'User does not exist' });
+      if (!isPasswordValid) {
+        return res.status(401).json({ error: 'Invalid email or password' });
       }
 
-      const user = results[0];
+      const token = jwt.sign({ email: user.email, id: user.id }, JWT_SECRET, { expiresIn: '1h' });
 
-      bcrypt.compare(password, user.password, (err, isPasswordValid) => {
-        if (err) {
-          console.error('Error comparing password:', err);
-          return res.status(500).json({ error: 'Password comparison error' });
-        }
-
-        if (!isPasswordValid) {
-          return res.status(401).json({ error: 'Invalid email or password' });
-        }
-
-        const token = jwt.sign({ email: user.email, id: user.id }, JWT_SECRET, { expiresIn: '1h' });
-
-        res.json({ message: 'Login successful', token });
-      });
+      res.json({ message: 'Login successful', token });
     });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+  });
 });
-
-// User data endpoint
-const user = {
-  id: 1,
-  name: 'John Doe',
-  email: 'johndoe@example.com'
-};
-
-// Endpoint to fetch user data
-app.get('/api/user', (req, res) => {
-  res.json(user);
-});
-
+app.use("/a",(req,res)=>{
+  res.status(201).send({message:"Hello"})
+})
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
