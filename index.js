@@ -11,6 +11,10 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+var Parse = require('parse/node');
+Parse.initialize("h8dr3hSFNK34QbYkfcfUumbJxE7xy0oacBYoAmyC","bBSMMYizf34cjj6fZoDBFn7SPgzuuzshdr7oVoR1"); //PASTE HERE YOUR Back4App APPLICATION ID AND YOUR JavaScript KEY
+Parse.serverURL = 'https://parseapi.back4app.com/'
+
 app.use(bodyParser.json());
 app.use(cors());
 app.use(express.json());
