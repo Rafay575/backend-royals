@@ -12,7 +12,9 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install only production dependencies (no development dependencies)
+RUN npm install bcryptjs
 RUN npm install --production
+
 
 # Copy the rest of the application code to the working directory
 COPY . .
