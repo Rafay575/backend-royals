@@ -2,7 +2,7 @@ require('dotenv').config(); // Load environment variables from .env file
 const express = require('express');
 const mysql = require('mysql');
 const nodemailer = require('nodemailer');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const bodyParser = require('body-parser');
 const cors = require("cors");
