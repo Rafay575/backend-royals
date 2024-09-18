@@ -7,9 +7,9 @@ const { sendEmail } = require('../services/emailService');
 const JWT_SECRET = process.env.JWT_SECRET;
 
 exports.sendOtp = (req, res) => {
-  const { email, company, contact, address, phone, type } = req.body;
+  const { email, company, contact, address, phone } = req.body;
 
-  if (!email || !company || !contact || !address || !phone || !type) {
+  if (!email || !company || !contact || !address || !phone ) {
     return res.status(400).json({ error: 'All fields are required' });
   }
 
@@ -41,7 +41,7 @@ exports.sendOtp = (req, res) => {
 
         connection.query(
           'INSERT INTO carrier_users (email, company, contact, address, phone, type, password) VALUES (?, ?, ?, ?, ?, ?, ?)',
-          [email, company, contact, address, phone, type, hashedPassword],
+          [email, company, contact, address, phone, "", hashedPassword],
           (err) => {
             connection.release();
             if (err) {
