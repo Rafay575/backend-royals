@@ -17,9 +17,8 @@ app.use(bodyParser.json());
 app.use(cors());
 app.use(express.json());
 
-// Serve uploaded files
+// Serve uploaded files from the 'uploads' directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/contact", contactRoutes);
