@@ -19,6 +19,7 @@ const eldLoadTrackingRoutes = require('./routes/eldLoadTrackingRoutes');
 const carrierEquipmentRoutes = require('./controllers/carrierEquipmentController');
 const carbComplianceRoutes = require('./routes/carbComplianceRoutes');
 const registrationRoutes = require('./routes/registrationRoutes');
+const subscriberRoutes = require('./routes/subscriberRoutes'); 
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -53,6 +54,7 @@ app.use('/api/eld-load-tracking', eldLoadTrackingRoutes);
 app.use('/api', carrierEquipmentRoutes);
 app.use('/api', carbComplianceRoutes);
 app.use('/api', registrationRoutes);
+app.use('/api', subscriberRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
