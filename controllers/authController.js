@@ -92,7 +92,33 @@ exports.login = (req, res) => {
       }
 
       const token = jwt.sign({ email: user.email, id: user.id }, JWT_SECRET, { expiresIn: '1h' });
-      res.json({ message: 'Login successful', token });
+      res.json({ message: 'Login successful', token, id:user.id });
     });
   });
+};
+
+exports.getUserById = (req, res) => {
+  const { id } = req.params;
+
+  if (!id) {
+    return res.status(400).json({ error: 'User ID is required' });
+  }
+
+  pool.query('SELECT * FROM carrier_users WHERE id = ?', [id], (err, results) => {
+    if (err) {
+      console.error('Error fetching user by ID:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.status(200).json(results[0]); // Return the user data
+  });
+};
+
+exports.logout = (req, res) => {
+ 
+  res.json({ message: 'Logout successful. Please remove the token from localStorage.' });
 };
