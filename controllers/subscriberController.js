@@ -1,29 +1,29 @@
-// /controllers/subscriberController.js
-const db = require('../config/db'); // Adjust the path based on your project structure
+const db = require('../config/db');
+// const { updateRegistrationColumn } = require('../helper/updateRegistrationColumn');
 
 // Function to handle the subscription logic
-const addSubscriber = async (req, res) => {
-    const { email } = req.body;
+const addSubscriber = (req, res) => {
+  const { email } = req.body;
 
-    // Validate the email input
-    console.log(email)
-    if (!email || !/\S+@\S+\.\S+/.test(email)) {
-        return res.status(400).json({ error: 'A valid email address is required' });
+  // Validate the email input
+  if (!email || !/\S+@\S+\.\S+/.test(email)) {
+    return res.status(400).json({ message: 'A valid email address is required' });
+  }
+
+  // SQL query to insert the email into the subscribers table
+  const query = `INSERT INTO subscribers (email) VALUES (?)`;
+
+  db.query(query, [email], (err, result) => {
+    if (err) {
+      console.error('Error saving data to the database:', err);
+      return res.status(500).json({ message: 'Database error' });
     }
 
-    try {
-        // Insert the email into the subscribers table
-        const query = `INSERT INTO subscribers (email) VALUES (?)`;
-        await db.run(query, [email]);
-
-        // Send success response
-        res.status(201).json({ message: 'Subscription successful!' });
-    } catch (error) {
-        console.error('Error subscribing user:', error);
-        res.status(500).json({ error: 'An error occurred while subscribing.' });
-    }
+    // Hypothetically update a column after successful insertion (if necessary)
+    res.status(201).json({ message: 'Subscription successful!', data: result });
+  });
 };
 
 module.exports = {
-    addSubscriber
+  addSubscriber
 };
