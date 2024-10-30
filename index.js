@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs');
 
 const authRoutes = require("./routes/authRoutes");
-const formRoutes  = require('./routes/addressRoutes');
+const formRoutes1  = require('./routes/addressRoutes');
 const contactRoutes = require("./routes/contactRoutes");
 const carrierRoutes  = require('./routes/carrierRoutes');
 const truckloadRoutes = require("./routes/truckloadRoutes");
@@ -20,6 +20,8 @@ const carrierEquipmentRoutes = require('./controllers/carrierEquipmentController
 const carbComplianceRoutes = require('./routes/carbComplianceRoutes');
 const registrationRoutes = require('./routes/registrationRoutes');
 const subscriberRoutes = require('./routes/subscriberRoutes'); 
+const formRoutes = require('./routes/formRoutes');
+const carrierOperatingAreas = require('./routes/carrierOperatingRoute');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -38,10 +40,10 @@ if (!fs.existsSync(uploadDir)) {
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-
 // Routes
-app.use('/api', carrierRoutes);
 app.use('/api', formRoutes);
+app.use('/api', carrierRoutes);
+app.use('/api', formRoutes1);
 app.use("/api/auth", authRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api", truckloadRoutes);
@@ -55,6 +57,7 @@ app.use('/api', carrierEquipmentRoutes);
 app.use('/api', carbComplianceRoutes);
 app.use('/api', registrationRoutes);
 app.use('/api', subscriberRoutes);
+app.use('/api', carrierOperatingAreas); 
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
